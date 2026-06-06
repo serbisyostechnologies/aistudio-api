@@ -1,6 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Project } from "../models/project.model.js";
-import { generateImage } from "../utils/image.util.js";
+import {
+  generateImage,
+  generateCollage,
+  editImage,
+} from "../utils/image.util.js";
 import { uploadOnCloudinary } from "../utils/uploadToCloudinary.js";
 
 const createImageUsingPrompt = asyncHandler(async (req, res) => {
@@ -107,9 +111,85 @@ const updateLikeDislike = asyncHandler(async (req, res) => {
     .json({ success: true, message: "Feedback updated successfully!" });
 });
 
+const createCollageUsingPrompt = asyncHandler(async (req, res) => {
+  try {
+    const { prompt, size, user_id } = req.body;
+    const images = req.files.images;
+
+    const base64_json = await generateCollage(prompt, size, images);
+    const collageFile = `data:image/png;base64,${base64_json}`;
+    const collageImage = await uploadOnCloudinary(collageFile, "COLLAGE");
+    const collage_url = collageImage.url;
+
+    const project = await Project.create({
+      prompt,
+      size,
+      category: "Collage",
+      operation: "Image Collage",
+      image_url: collage_url,
+      user: user_id,
+    });
+
+    if (!project) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Failed to create image collage!" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Image collage created successfully!",
+      collage_url: collage_url,
+    });
+  } catch (error) {
+    return res
+      .status(200)
+      .json({ success: false, message: "Failed to create image collage!" });
+  }
+});
+
+const editImageUsingPrompt = asyncHandler(async (req, res) => {
+  try {
+    const { prompt, size, user_id } = req.body;
+    const imageFile = req.files.file;
+
+    const base64_json = await editImage(prompt, size, imageFile);
+    const editedFile = `data:image/png;base64,${base64_json}`;
+    const editedImage = await uploadOnCloudinary(editedFile, "COLLAGE");
+    const edited_url = editedImage.url;
+
+    const project = await Project.create({
+      prompt,
+      size,
+      category: "Image",
+      operation: "Edit Image",
+      image_url: edited_url,
+      user: user_id,
+    });
+
+    if (!project) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Failed to edit image!" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Image edit successfully!",
+      edited_url: edited_url,
+    });
+  } catch (error) {
+    return res
+      .status(200)
+      .json({ success: false, message: "Failed to edit image!" });
+  }
+});
+
 export {
   createImageUsingPrompt,
   getAllProjectByUserId,
   deleteProjectById,
   updateLikeDislike,
+  createCollageUsingPrompt,
+  editImageUsingPrompt
 };

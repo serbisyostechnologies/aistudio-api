@@ -9,7 +9,7 @@ const HOST = process.env.HOST || "localhost";
 const startServer = async () => {
   await connectDB();
 
-  app.listen(PORT, HOST, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 };
