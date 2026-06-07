@@ -1,11 +1,15 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Project } from "../models/project.model.js";
+import { User } from "../models/user.model.js";
 import {
   generateImage,
   generateCollage,
   editImage,
+  analyseImage,
 } from "../utils/image.util.js";
 import { uploadOnCloudinary } from "../utils/uploadToCloudinary.js";
+import fs from "fs";
+import { cleanPrompt } from "../utils/promptValidator.js";
 
 const createImageUsingPrompt = asyncHandler(async (req, res) => {
   const { prompt, size, user_id } = req.body;
@@ -16,7 +20,15 @@ const createImageUsingPrompt = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Prompt is required!" });
   }
 
-  const base64_json = await generateImage(prompt);
+  if (prompt.toLowerCase().includes("[PASSWORD]")) {
+    return res.status(200).json({
+      success: false,
+      message: "Unable to create image because of sensitve text in prompt!",
+    });
+  }
+
+  const clearedPrompt = cleanPrompt(prompt);
+  const base64_json = await generateImage(clearedPrompt);
   const imageFile = `data:image/png;base64,${base64_json}`;
   const aiImage = await uploadOnCloudinary(imageFile, "IMAGES");
   const image_url = aiImage.url;
@@ -36,10 +48,14 @@ const createImageUsingPrompt = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Failed to create image!" });
   }
 
+  const user = await User.findById(user_id);
+  const updatedUser = await updateCredit(user);
+
   return res.status(200).json({
     success: true,
     message: "Image created successfully!",
     image_url: image_url,
+    credits: updatedUser.credits,
   });
 });
 
@@ -53,7 +69,9 @@ const getAllProjectByUserId = asyncHandler(async (req, res) => {
   }
 
   const projects = await Project.find({ user: userId })
-    .select("prompt category operation image_url is_liked createdAt")
+    .select(
+      "_id operation image_url createdAt",
+    )
     .sort({ createdAt: -1 });
 
   return res.status(200).json({ success: true, projects: projects });
@@ -114,9 +132,17 @@ const updateLikeDislike = asyncHandler(async (req, res) => {
 const createCollageUsingPrompt = asyncHandler(async (req, res) => {
   try {
     const { prompt, size, user_id } = req.body;
+    if (prompt.toLowerCase().includes("[PASSWORD]")) {
+      return res.status(200).json({
+        success: false,
+        message: "Unable to create image because of sensitve text in prompt!",
+      });
+    }
+
+    const clearedPrompt = cleanPrompt(prompt);
     const images = req.files.images;
 
-    const base64_json = await generateCollage(prompt, size, images);
+    const base64_json = await generateCollage(clearedPrompt, size, images);
     const collageFile = `data:image/png;base64,${base64_json}`;
     const collageImage = await uploadOnCloudinary(collageFile, "COLLAGE");
     const collage_url = collageImage.url;
@@ -136,10 +162,14 @@ const createCollageUsingPrompt = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Failed to create image collage!" });
     }
 
+    const user = await User.findById(user_id);
+    const updatedUser = await updateCredit(user);
+
     return res.status(200).json({
       success: true,
       message: "Image collage created successfully!",
       collage_url: collage_url,
+      credits: updatedUser.credits,
     });
   } catch (error) {
     return res
@@ -152,9 +182,16 @@ const editImageUsingPrompt = asyncHandler(async (req, res) => {
   try {
     const { prompt, size, user_id } = req.body;
     const imageFile = req.files.userImage[0];
-    console.log(req);
 
-    const base64_json = await editImage(prompt, size, imageFile);
+    if (prompt.toLowerCase().includes("[PASSWORD]")) {
+      return res.status(200).json({
+        success: false,
+        message: "Unable to create image because of sensitve text in prompt!",
+      });
+    }
+
+    const clearedPrompt = cleanPrompt(prompt);
+    const base64_json = await editImage(clearedPrompt, size, imageFile);
     const editedFile = `data:image/png;base64,${base64_json}`;
     const editedImage = await uploadOnCloudinary(editedFile, "COLLAGE");
     const edited_url = editedImage.url;
@@ -174,10 +211,14 @@ const editImageUsingPrompt = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Failed to edit image!" });
     }
 
+    const user = await User.findById(user_id);
+    const updatedUser = await updateCredit(user);
+
     return res.status(200).json({
       success: true,
       message: "Image edit successfully!",
       edited_url: edited_url,
+      credits: updatedUser.credits,
     });
   } catch (error) {
     console.log(error);
@@ -187,11 +228,86 @@ const editImageUsingPrompt = asyncHandler(async (req, res) => {
   }
 });
 
+const analyseImageUsingPrompt = asyncHandler(async (req, res) => {
+  try {
+    const { prompt, user_id } = req.body;
+    const userImage = req.files.userImage[0];
+
+    if (prompt.toLowerCase().includes("[PASSWORD]")) {
+      return res.status(200).json({
+        success: false,
+        message: "Unable to create image because of sensitve text in prompt!",
+      });
+    }
+
+    const clearedPrompt = cleanPrompt(prompt);
+    const imageBuffer = fs.readFileSync(userImage.path);
+
+    if (!userImage) {
+      return res.status(200).json({
+        success: false,
+        message: "Please upload an image to analyse!",
+      });
+    }
+
+    const analysis = await analyseImage(
+      imageBuffer,
+      userImage.mimetype,
+      clearedPrompt,
+    );
+
+    const userImagePath = userImage.path;
+    const image = await uploadOnCloudinary(userImagePath, "ANALYSIS_IMAGES");
+
+    const image_url = image.url;
+    const project = await Project.create({
+      prompt,
+      size: "",
+      category: "Image",
+      operation: "Analyse Image",
+      analysis_text: analysis,
+      image_url: image_url,
+      user: user_id,
+    });
+
+    if (!project) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Failed to edit image!" });
+    }
+
+    const user = await User.findById(user_id);
+    const updatedUser = await updateCredit(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Image analysed successfully!",
+      analysis_text: analysis,
+      credits: updatedUser.credits,
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(200)
+      .json({ success: false, message: "Failed to analyse image!" });
+  }
+});
+
+const updateCredit = async (user) => {
+  const response = await User.findByIdAndUpdate(
+    user._id,
+    { $inc: { credits: -25 } },
+    { new: true },
+  );
+  return response;
+};
+
 export {
   createImageUsingPrompt,
   getAllProjectByUserId,
   deleteProjectById,
   updateLikeDislike,
   createCollageUsingPrompt,
-  editImageUsingPrompt
+  editImageUsingPrompt,
+  analyseImageUsingPrompt,
 };

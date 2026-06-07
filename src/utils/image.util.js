@@ -20,7 +20,7 @@ export const generateImage = async (prompt, size = "1024x1024") => {
     `;
 
     const response = await openai.images.generate({
-      model: "gpt-image-1",
+      model: "gpt-image-1-mini",
       prompt: optimizedPrompt.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
       size,
       quality: "medium",
@@ -106,7 +106,7 @@ export const generateCollage = async (prompt, size, images) => {
     });
 
     const response = await openai.images.edit({
-      model: "gpt-image-1",
+      model: "gpt-image-1-mini",
       image: [collageFile],
       prompt: `
       Create a premium instagram-style collage.
@@ -136,6 +136,14 @@ export const generateCollage = async (prompt, size, images) => {
       - Do not crop important objects
       - Keep collage realistic
       - Keep collage aesthetic
+
+      Rules:
+      - Do not provide suggestions
+      - Do not give recommendations
+      - Do not include improvement tips
+      - Do not ask follow-up questions
+      - Only describe and analyze what is visible
+      - Keep response concise and structured
       `,
 
       size: size || "1024x1024",
@@ -191,13 +199,21 @@ export const editImage = async (prompt, size, image) => {
     - Do not distort face
     - Do not change identity
     - Keep image realistic
+
+    Rules:
+      - Do not provide suggestions
+      - Do not give recommendations
+      - Do not include improvement tips
+      - Do not ask follow-up questions
+      - Only describe and analyze what is visible
+      - Keep response concise and structured
     `
       .replace(/\n/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
     const response = await openai.images.edit({
-      model: "gpt-image-1",
+      model: "gpt-image-1-mini",
       image: [imageFile],
       prompt: optimizedPrompt,
       size: size || "1024x1024",
@@ -233,5 +249,80 @@ export const editImage = async (prompt, size, image) => {
     }
 
     throw new Error(error.message || "Failed to edit image");
+  }
+};
+
+export const analyseImage = async (imageBuffer, mimeType, prompt) => {
+  try {
+    const base64Image = imageBuffer.toString("base64");
+    const imageDataUrl = `data:${mimeType};base64,${base64Image}`;
+
+    const defaultPrompt = `
+      Analyze this image in detail.
+      
+      Include:
+      - Main subject
+      - Scene description
+      - Colors and lighting
+      - Objects present
+      - Mood and atmosphere
+      - Style/aesthetic
+      - Important details
+      
+      Rules:
+      - Do not provide suggestions
+      - Do not give recommendations
+      - Do not include improvement tips
+      - Do not ask follow-up questions
+      - Only describe and analyze what is visible
+      - Keep response concise and structured
+      Keep the response clear and well-structured.
+    `;
+
+    const finalPrompt = `
+      ${defaultPrompt}
+
+      Additional User Request:
+      ${prompt || "No additional instructions provided."}
+    `;
+
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: finalPrompt,
+            },
+            {
+              type: "input_image",
+              image_url: imageDataUrl,
+            },
+          ],
+        },
+      ],
+    });
+
+    return response.output_text;
+  } catch (error) {
+    if (error.status === 429) {
+      throw new Error("Too many requests. Please try again later.");
+    }
+
+    if (error.status === 400) {
+      throw new Error(
+        error?.error?.message || error.message || "OpenAI request failed",
+      );
+    }
+
+    if (error.status === 401) {
+      throw new Error("Invalid OpenAI API key.");
+    }
+
+    throw new Error(
+      error?.error?.message || error.message || "OpenAI request failed",
+    );
   }
 };

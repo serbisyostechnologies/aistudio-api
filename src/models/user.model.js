@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     is_active: { type: Boolean, default: true, required: true },
     is_logged_in: { type: Boolean, default: false, required: true },
     profile_url: { type: String, default: "", select: false },
+    credits: { type: Number, default: 10 },
     fcmToken: {type: String, default: ""},
     deviceId: {type: String, default: ""},
     refreshToken: { type: String, default: "" },

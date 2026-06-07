@@ -18,6 +18,10 @@ const projectSchema = new mongoose.Schema(
     image_url: {
       type: String,
     },
+    analysis_text: {
+      type: String,
+      default: ""
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
