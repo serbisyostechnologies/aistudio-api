@@ -15,7 +15,7 @@ const router = Router();
 
 router.route("/register").post(registerUser);
 router.route("/login").post(loginUser);
-router.route("/logout").post(verifyJWT, logoutUser);
+router.route("/logout").post(logoutUser);
 router.route("/refresh-token").post(refreshAccessToken);
 router.route("/remove-profile-photo").post(removeProfilePhoto);
 router.route("/upload-profile-photo").post(upload.fields([{ name: "avatar", maxCount: 1,}]), updateProfilePhoto);
