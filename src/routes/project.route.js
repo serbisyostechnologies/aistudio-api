@@ -16,6 +16,6 @@ router.route("/get-all-by-user-id").post(getAllProjectByUserId);
 router.route("/delete-project-by-id").post(deleteProjectById);
 router.route("/update-project-like").post(updateLikeDislike);
 router.route("/create-collage-using-prompt").post(upload.fields([{ name: "images", maxCount: 10,}]), createCollageUsingPrompt);
-router.route("/edit-image-using-prompt").post(upload.fields([{ name: "file", maxCount: 1,}]), editImageUsingPrompt);
+router.route("/edit-image-using-prompt").post(upload.fields([{ name: "userImage", maxCount: 1,}]), editImageUsingPrompt);
 
 export default router;

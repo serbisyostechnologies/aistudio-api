@@ -151,7 +151,8 @@ const createCollageUsingPrompt = asyncHandler(async (req, res) => {
 const editImageUsingPrompt = asyncHandler(async (req, res) => {
   try {
     const { prompt, size, user_id } = req.body;
-    const imageFile = req.files.file;
+    const imageFile = req.files.userImage[0];
+    console.log(req);
 
     const base64_json = await editImage(prompt, size, imageFile);
     const editedFile = `data:image/png;base64,${base64_json}`;
@@ -179,6 +180,7 @@ const editImageUsingPrompt = asyncHandler(async (req, res) => {
       edited_url: edited_url,
     });
   } catch (error) {
+    console.log(error);
     return res
       .status(200)
       .json({ success: false, message: "Failed to edit image!" });
