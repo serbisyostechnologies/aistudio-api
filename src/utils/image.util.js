@@ -20,7 +20,7 @@ export const generateImage = async (prompt, size = "1024x1024") => {
     `;
 
     const response = await openai.images.generate({
-      model: "gpt-image-1-mini",
+      model: process.env.IMAGE_MINI_MODEL,
       prompt: optimizedPrompt.replace(/\n/g, " ").replace(/\s+/g, " ").trim(),
       size,
       quality: "medium",
@@ -106,7 +106,7 @@ export const generateCollage = async (prompt, size, images) => {
     });
 
     const response = await openai.images.edit({
-      model: "gpt-image-1-mini",
+      model: process.env.IMAGE_MINI_MODEL,
       image: [collageFile],
       prompt: `
       Create a premium instagram-style collage.
@@ -213,7 +213,7 @@ export const editImage = async (prompt, size, image) => {
       .trim();
 
     const response = await openai.images.edit({
-      model: "gpt-image-1-mini",
+      model: process.env.IMAGE_MINI_MODEL,
       image: [imageFile],
       prompt: optimizedPrompt,
       size: size || "1024x1024",
@@ -287,7 +287,7 @@ export const analyseImage = async (imageBuffer, mimeType, prompt) => {
     `;
 
     const response = await openai.responses.create({
-      model: "gpt-4.1-mini",
+      model: process.env.GPT_MINI_MODEL,
       input: [
         {
           role: "user",
