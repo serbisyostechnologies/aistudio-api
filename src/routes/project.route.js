@@ -6,7 +6,8 @@ import {
   updateLikeDislike,
   createCollageUsingPrompt,
   editImageUsingPrompt,
-  analyseImageUsingPrompt
+  analyseImageUsingPrompt,
+  createVideoUsingPrompt
 } from "../controllers/project.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -19,5 +20,6 @@ router.route("/update-project-like").post(updateLikeDislike);
 router.route("/create-collage-using-prompt").post(upload.fields([{ name: "images", maxCount: 10,}]), createCollageUsingPrompt);
 router.route("/edit-image-using-prompt").post(upload.fields([{ name: "userImage", maxCount: 1,}]), editImageUsingPrompt);
 router.route("/analyse-image-using-prompt").post(upload.fields([{ name: "userImage", maxCount: 1,}]), analyseImageUsingPrompt);
+router.route("/create-video-using-prompt").post(createVideoUsingPrompt);
 
 export default router;
