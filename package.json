@@ -2,10 +2,10 @@
   "name": "aiserbisyosstudio-api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node api/index.js"
   },
   "keywords": [],
   "author": "",
