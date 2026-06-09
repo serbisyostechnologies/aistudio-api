@@ -7,7 +7,8 @@ import {
   createCollageUsingPrompt,
   editImageUsingPrompt,
   analyseImageUsingPrompt,
-  createVideoUsingPrompt
+  createVideoUsingPrompt,
+  createVideoUsingImages
 } from "../controllers/project.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
@@ -21,5 +22,6 @@ router.route("/create-collage-using-prompt").post(upload.fields([{ name: "images
 router.route("/edit-image-using-prompt").post(upload.fields([{ name: "userImage", maxCount: 1,}]), editImageUsingPrompt);
 router.route("/analyse-image-using-prompt").post(upload.fields([{ name: "userImage", maxCount: 1,}]), analyseImageUsingPrompt);
 router.route("/create-video-using-prompt").post(createVideoUsingPrompt);
+router.route("/create-video-using-images").post(upload.fields([{ name: "images", maxCount: 10,}]), createVideoUsingImages);
 
 export default router;

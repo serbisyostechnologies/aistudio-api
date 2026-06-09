@@ -7,10 +7,11 @@ import {
   editImage,
   analyseImage,
 } from "../utils/image.util.js";
-import { generateVideo } from "../utils/video.util.js";
+import { generateVideo, createReel } from "../utils/video.util.js";
 import { uploadOnCloudinary } from "../utils/uploadToCloudinary.js";
 import fs from "fs";
 import { cleanPrompt } from "../utils/promptValidator.js";
+import path from "path";
 
 const createImageUsingPrompt = asyncHandler(async (req, res) => {
   const { prompt, size, user_id } = req.body;
@@ -296,7 +297,7 @@ const updateCredit = async (user) => {
   const response = await User.findByIdAndUpdate(
     user._id,
     { $inc: { credits: -25 } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   return response;
 };
@@ -355,6 +356,72 @@ const createVideoUsingPrompt = asyncHandler(async (req, res) => {
   }
 });
 
+const createVideoUsingImages = asyncHandler(async (req, res) => {
+  try {
+    const { templateId, music, user_id } = req.body;
+    console.log(req.body);
+    const tempDir = path.join(process.cwd(), "public/temp");
+    if (!fs.existsSync(tempDir)) {
+      return res.status(400).json({
+        success: false,
+        message: "Temp folder not found!",
+      });
+    }
+
+    const images = fs
+      .readdirSync(tempDir)
+      .filter((file) => file.endsWith(".jpg") || file.endsWith(".png"))
+      .sort();
+
+    if (images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select images to create video!",
+      });
+    }
+
+    const outputPath = path.join(tempDir, "reel.mp4");
+    const videoUrl = await createReel({
+      tempDir,
+      musicPath: music || null,
+      outputPath,
+      templateId: templateId,
+    });
+
+    const project = await Project.create({
+      prompt: "",
+      size: "",
+      category: "Video",
+      operation: "Create Video",
+      analysis_text: "",
+      image_url: videoUrl,
+      user: user_id,
+    });
+
+    if (!project) {
+      return res
+        .status(200)
+        .json({ success: false, message: "Failed to create video!" });
+    }
+
+    const user = await User.findById(user_id);
+    const updatedUser = await updateCredit(user);
+
+    return res.json({
+      success: true,
+      message: "Video created successfully",
+      video_url: videoUrl,
+      credits: updatedUser.credits,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      error: "Video creation failed",
+    });
+  }
+});
+
 export {
   createImageUsingPrompt,
   getAllProjectByUserId,
@@ -364,4 +431,5 @@ export {
   editImageUsingPrompt,
   analyseImageUsingPrompt,
   createVideoUsingPrompt,
+  createVideoUsingImages,
 };
