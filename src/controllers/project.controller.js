@@ -61,20 +61,81 @@ const createImageUsingPrompt = asyncHandler(async (req, res) => {
   });
 });
 
-const getAllProjectByUserId = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
+const getProjectByUserId = asyncHandler(async (req, res) => {
+  const { userId, limit, skip, filters } = req.body;
 
   if (!userId) {
     return res
       .status(200)
       .json({ success: false, message: "User id is required!" });
   }
+  let filter = { user: userId };
+  if (filters.type && filters.type !== "All") {
+    filter["operation"] = {
+      $regex: filters.type,
+      $options: "i",
+    };
+  }
+  if (filters.time && filters.time !== "All") {
+    const now = new Date();
 
-  const projects = await Project.find({ user: userId })
-    .select("_id operation image_url createdAt")
+    let startDate;
+
+    switch (filters.time) {
+      case "Today":
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        break;
+
+      case "7 Days":
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+
+      case "30 Days":
+        startDate = new Date(now.setDate(now.getDate() - 30));
+        break;
+
+      case "3 Months":
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 3);
+        break;
+
+      case "6 Months":
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 6);
+        break;
+
+      case "9 Months":
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 9);
+        break;
+
+      case "1 Year":
+        startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+    }
+
+    filter.createdAt = {
+      $gte: startDate,
+    };
+  }
+
+  const projects = await Project.find(filter)
+    .select("_id operation image_url is_liked category createdAt")
+    .skip(skip)
+    .limit(limit)
     .sort({ createdAt: -1 });
 
-  return res.status(200).json({ success: true, projects: projects });
+  const total = await Project.countDocuments();
+  return res.status(200).json({
+    success: true,
+    projects: projects,
+    total,
+    skip,
+    limit,
+    hasMore: skip + projects.length < total,
+  });
 });
 
 const deleteProjectById = asyncHandler(async (req, res) => {
@@ -86,7 +147,7 @@ const deleteProjectById = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Project id is required!" });
   }
 
-  const deletedProject = Project.findByIdAndDelete(projectId);
+  const deletedProject = await Project.findByIdAndDelete(projectId);
   if (!deletedProject) {
     return res
       .status(200)
@@ -107,7 +168,7 @@ const updateLikeDislike = asyncHandler(async (req, res) => {
       .json({ success: false, message: "Project and user ids are required!" });
   }
 
-  const feedback = await ProjectFeedback.findOneAndUpdate(
+  const feedback = await Project.findOneAndUpdate(
     {
       _id: projectId,
       user: userId,
@@ -221,7 +282,6 @@ const editImageUsingPrompt = asyncHandler(async (req, res) => {
       credits: updatedUser.credits,
     });
   } catch (error) {
-    console.log(error);
     return res
       .status(200)
       .json({ success: false, message: "Failed to edit image!" });
@@ -286,7 +346,6 @@ const analyseImageUsingPrompt = asyncHandler(async (req, res) => {
       credits: updatedUser.credits,
     });
   } catch (error) {
-    console.log(error);
     return res
       .status(200)
       .json({ success: false, message: "Failed to analyse image!" });
@@ -297,7 +356,7 @@ const updateCredit = async (user) => {
   const response = await User.findByIdAndUpdate(
     user._id,
     { $inc: { credits: -25 } },
-    { returnDocument: 'after' },
+    { returnDocument: "after" },
   );
   return response;
 };
@@ -349,7 +408,6 @@ const createVideoUsingPrompt = asyncHandler(async (req, res) => {
       credits: updatedUser.credits,
     });
   } catch (error) {
-    console.log(error);
     return res
       .status(200)
       .json({ success: false, message: "Failed to create video!" });
@@ -359,8 +417,7 @@ const createVideoUsingPrompt = asyncHandler(async (req, res) => {
 const createVideoUsingImages = asyncHandler(async (req, res) => {
   try {
     const { templateId, music, user_id } = req.body;
-    console.log(req.body);
-    const tempDir = path.join(process.cwd(), "public/temp");
+    const tempDir = path.join(process.cwd(), "./public/temp");
     if (!fs.existsSync(tempDir)) {
       return res.status(400).json({
         success: false,
@@ -424,7 +481,7 @@ const createVideoUsingImages = asyncHandler(async (req, res) => {
 
 export {
   createImageUsingPrompt,
-  getAllProjectByUserId,
+  getProjectByUserId,
   deleteProjectById,
   updateLikeDislike,
   createCollageUsingPrompt,

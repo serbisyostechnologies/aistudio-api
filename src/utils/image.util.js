@@ -156,7 +156,6 @@ export const generateCollage = async (prompt, size, images) => {
     });
     return response.data[0].b64_json;
   } catch (error) {
-    console.log(error);
     throw new Error(error.message);
   }
 };
@@ -234,8 +233,6 @@ export const editImage = async (prompt, size, image) => {
 
     return response.data[0].b64_json;
   } catch (error) {
-    console.log("Edit Image Error:", error);
-
     if (error.status === 429) {
       throw new Error("Too many requests. Please try again later.");
     }

@@ -46,8 +46,7 @@ export const generateVideo = async (prompt) => {
 
     return newVideo.url;
   } catch (error) {
-    console.log(error);
-    throw error;
+    throw Error(error.message);
   }
 };
 
@@ -57,7 +56,6 @@ export const createReel = async ({
   outputPath,
   templateId,
 }) => {
-  console.log(templates[templateId]);
   const outputDir = path.dirname(outputPath);
 
   if (!fs.existsSync(outputDir)) {
@@ -95,12 +93,10 @@ export const createReel = async ({
       let command = ffmpeg()
         .input(imagePattern)
         .inputOptions(["-loop 1", "-t 5"])
-        .videoFilters(templates[templateId])
+        .videoFilters(templates[templateId || 'cinematicZoomIn'])
         .videoCodec("libx264")
         .outputOptions([
-          "-map [outv]",
           "-pix_fmt yuv420p",
-          "-c:v libx264",
           "-preset medium",
           "-crf 23",
         ])
@@ -143,7 +139,6 @@ export const createReel = async ({
     safeImages.forEach((file) => {
       if (fs.existsSync(file)) fs.unlinkSync(file);
     });
-    console.log(error);
     throw Error(error.message);
   }
 };
